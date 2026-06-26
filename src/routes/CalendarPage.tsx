@@ -1,26 +1,34 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Flame, UtensilsCrossed, Dumbbell } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UtensilsCrossed, Dumbbell } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
 import { SectionHeader } from '@/components/ui/Card'
 import { MetricHero } from '@/components/ui/MetricHero'
 import { SurfaceCard } from '@/components/ui/SurfaceCard'
-import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useUIStore } from '@/stores/uiStore'
 import { useDataStore } from '@/stores/dataStore'
 import { useAuthStore } from '@/stores/authStore'
-import { useStaggerIn, usePageEnter, animateStreakFire, useTapBurst } from '@/components/anime/hooks'
+import { useStaggerIn, useTapBurst } from '@/components/anime/hooks'
 import { MON, key, todayKey } from '@/lib/utils'
 import { colorFor } from '@/lib/summarise'
-import { computeWeekStats, computeStreak } from '@/lib/stats'
-import { APP_NAME } from '@/lib/brand'
+import {
+  computeWeekStats,
+  computeActiveStreak,
+  computeVolumeBaseline,
+  computeWeekComparison,
+  computeDailyProgress,
+  formatDeltaSessions,
+  formatDeltaVolume,
+} from '@/lib/stats'
+import { buildHomeHeadline, buildHomeSubline, buildTodaySummary } from '@/lib/insights'
+import { ScoreboardHero } from '@/features/home/ScoreboardHero'
 import { WeeklyActivityBar } from '@/features/home/WeeklyActivityBar'
 import { MacroRings } from '@/features/food/MacroRings'
 import { useFoodStore } from '@/stores/foodStore'
 import { mealsForDate, summariseDay } from '@/lib/food'
 import type { Session } from '@/lib/types'
-import { useEffect, useRef } from 'react'
 import { hapticLight } from '@/lib/haptics'
+import { cn } from '@/lib/utils'
 
 export function CalendarPage() {
   const navigate = useNavigate()
@@ -30,20 +38,31 @@ export function CalendarPage() {
   const sessions = useDataStore((s) => s.sessions)
   const mealsByDate = useFoodStore((s) => s.mealsByDate)
   const nutritionGoals = useFoodStore((s) => s.goals)
-  const heroRef = usePageEnter<HTMLDivElement>([])
   const calRef = useStaggerIn<HTMLDivElement>([month.getMonth(), month.getFullYear()])
-  const streakRef = useRef<HTMLSpanElement>(null)
   const onDayTap = useTapBurst()
 
   const week = computeWeekStats(sessions)
-  const streak = computeStreak(sessions)
+  const comparison = computeWeekComparison(sessions)
+  const streak = computeActiveStreak(sessions)
+  const volumeBaseline = computeVolumeBaseline(sessions)
+  const progress = computeDailyProgress(sessions, mealsByDate, nutritionGoals, todayKey)
   const todayMeals = mealsForDate(mealsByDate, todayKey)
   const todayMacros = summariseDay(todayMeals)
   const todaySession = sessions[todayKey] as Session | undefined
 
-  useEffect(() => {
-    if (streak > 0 && streakRef.current) animateStreakFire(streakRef.current)
-  }, [streak])
+  const headline = buildHomeHeadline(
+    sessions,
+    mealsByDate,
+    nutritionGoals,
+    todayKey,
+    week,
+    profile?.display_name || profile?.handle,
+  )
+  const subline = buildHomeSubline(sessions, streak, week)
+  const todaySummary = buildTodaySummary(sessions, mealsByDate, nutritionGoals, todayKey)
+
+  const proteinLow = todayMacros.protein_g < nutritionGoals.protein_g * 0.7
+  const needsWorkout = !progress.trainedToday && !progress.restToday
 
   const y = month.getFullYear()
   const mo = month.getMonth()
@@ -83,66 +102,59 @@ export function CalendarPage() {
     )
   }
 
-  const greeting = () => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
-
   return (
     <AppShell hideNav={false} hero>
-      <div ref={heroRef} className="mb-6">
-        <p className="text-[12px] font-semibold text-muted uppercase tracking-widest mb-1">
-          {greeting()} · {APP_NAME}
-        </p>
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="font-display text-[32px] font-extrabold tracking-tight leading-none">
-            {profile?.display_name || profile?.handle || 'Athlete'}
-          </h1>
-          {streak > 0 && (
-            <button
-              type="button"
-              onClick={() => navigate('/feed')}
-              className="pill bg-accent-dim text-accent border border-accent/30 gap-1.5 shadow-glow-sm active:scale-95 transition-transform"
-            >
-              <Flame size={16} className="text-accent-warm" />
-              <span ref={streakRef} className="num font-bold">
-                {streak}
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
+      <ScoreboardHero
+        score={progress.score}
+        headline={headline}
+        subline={subline}
+        streak={streak}
+      />
 
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <MetricHero label="Week" value={week.sessions} unit="sessions" />
-        <MetricHero label="Sets" value={week.sets} />
-        <MetricHero label="Volume" value={week.volumeKg} unit="kg" />
+        <MetricHero
+          label="Week"
+          value={week.sessions}
+          unit="sessions"
+          delta={formatDeltaSessions(comparison.deltaSessions)}
+        />
+        <MetricHero
+          label="Sets"
+          value={week.sets}
+          delta={
+            comparison.deltaSets === 0
+              ? undefined
+              : comparison.deltaSets > 0
+                ? `+${comparison.deltaSets} sets`
+                : `${comparison.deltaSets} sets`
+          }
+        />
+        <MetricHero
+          label="Volume"
+          value={week.volumeKg}
+          unit="kg"
+          delta={formatDeltaVolume(comparison.deltaVolumePct)}
+        />
       </div>
 
       <SurfaceCard active className="mb-5">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <div className="font-display text-[17px] font-bold">Today</div>
-            <p className="text-[12px] text-muted mt-0.5">
-              {todaySession ? 'Workout logged' : 'No workout yet'} · {todayMacros.kcal} kcal
-            </p>
-          </div>
+        <div className="mb-4">
+          <div className="font-display text-[17px] font-bold">Today</div>
+          <p className="text-[12px] text-muted mt-0.5">{todaySummary}</p>
         </div>
         <div className="flex justify-center mb-4">
           <MacroRings
             eaten={todayMacros}
             goals={nutritionGoals}
             volumeKg={week.volumeKg}
-            volumeGoal={5000}
+            volumeGoal={volumeBaseline}
             compact
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Button
-            variant="primary"
-            className="gap-2"
+            variant={proteinLow ? 'primary' : 'secondary'}
+            className={cn('gap-2', proteinLow && 'shadow-glow-sm')}
             onClick={() => {
               void hapticLight()
               navigate('/food')
@@ -152,21 +164,23 @@ export function CalendarPage() {
             Log food
           </Button>
           <Button
-            variant="secondary"
-            className="gap-2"
+            variant={needsWorkout ? 'primary' : 'secondary'}
+            className={cn('gap-2', needsWorkout && 'shadow-glow-sm')}
             onClick={() => {
               void hapticLight()
               navigate(`/day/${todayKey}`)
             }}
           >
             <Dumbbell size={16} />
-            {todaySession ? 'View workout' : 'Start workout'}
+            {todaySession?.kind === 'workout' || todaySession?.kind === 'cardio'
+              ? 'View workout'
+              : 'Start workout'}
           </Button>
         </div>
       </SurfaceCard>
 
       <SurfaceCard className="mb-5">
-        <SectionHeader title="Activity" subtitle="Last 7 days" />
+        <SectionHeader title="Activity" subtitle={`${week.volumeKg.toLocaleString()} kg · 7 days`} />
         <WeeklyActivityBar sessions={sessions} days={week.days} />
       </SurfaceCard>
 
@@ -201,19 +215,6 @@ export function CalendarPage() {
       </div>
       <div ref={calRef} className="grid grid-cols-7 gap-1.5 mb-4">
         {cells}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {[
-          ['push', 'Push', 'push'],
-          ['pull', 'Pull', 'pull'],
-          ['leg', 'Legs', 'leg'],
-          ['cardio', 'Cardio', 'cardio'],
-        ].map(([, label, tone]) => (
-          <Badge key={label} tone={tone as 'push'}>
-            {label}
-          </Badge>
-        ))}
       </div>
     </AppShell>
   )

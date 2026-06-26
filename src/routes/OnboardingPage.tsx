@@ -20,6 +20,15 @@ import { usePageEnter, useEnter } from '@/components/anime/hooks'
 import { showToast } from '@/components/ui/Toast'
 import { hapticSuccess } from '@/lib/haptics'
 import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
+import {
+  TRAINING_GOALS,
+  displayWeightToKg,
+  macrosFromBody,
+  persistNutritionGoals,
+  type TrainingGoal,
+} from '@/lib/goals'
+import { useFoodStore } from '@/stores/foodStore'
+
 import type { Profile } from '@/lib/types'
 
 const steps = ['auth', 'profile', 'health'] as const
@@ -33,6 +42,8 @@ export function OnboardingPage() {
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [units, setUnits] = useState<'kg' | 'lb'>('kg')
+  const [bodyWeight, setBodyWeight] = useState('70')
+  const [trainingGoal, setTrainingGoal] = useState<TrainingGoal>('maintain')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const isNative = Capacitor.isNativePlatform()
@@ -117,23 +128,41 @@ export function OnboardingPage() {
 
   async function saveProfile() {
     if (!session?.user || !handle.trim()) return
+    const weightNum = parseFloat(bodyWeight)
+    if (!weightNum || weightNum <= 0) {
+      setMessage('Enter your body weight.')
+      return
+    }
     setLoading(true)
+    const weightKg = displayWeightToKg(weightNum, units)
+    const macros = macrosFromBody(weightKg, trainingGoal)
     const row: Partial<Profile> = {
       id: session.user.id,
       handle: handle.trim().toLowerCase(),
       display_name: session.user.user_metadata?.full_name || handle.trim(),
       units,
+      body_weight_kg: weightKg,
+      training_goal: trainingGoal,
       share_workouts: true,
       auto_post_workout: true,
       auto_post_pr: true,
       auto_post_streak: true,
     }
     const { error } = await supabase.from('profiles').upsert(row)
-    setLoading(false)
     if (error) {
+      setLoading(false)
       setMessage(error.message)
       return
     }
+    try {
+      await persistNutritionGoals(session.user.id, macros)
+      useFoodStore.getState().setGoals(macros)
+    } catch (e) {
+      setLoading(false)
+      setMessage(e instanceof Error ? e.message : 'Could not save goals.')
+      return
+    }
+    setLoading(false)
     useAuthStore.getState().setProfile(row as Profile)
     await hapticSuccess()
     if (isNative && NATIVE_APPLE_SIGNIN_ENABLED) setStep('health')
@@ -245,7 +274,7 @@ export function OnboardingPage() {
           {step === 'profile' && (
             <div ref={profileStepRef} key="profile">
               <h1 className="font-display text-[26px] font-extrabold mb-2">Almost there</h1>
-              <p className="text-muted text-[14px] mb-6">Pick a handle your friends will recognize.</p>
+              <p className="text-muted text-[14px] mb-6">Set your handle and targets — we&apos;ll personalize your scoreboard.</p>
               <SurfaceCard>
                 <Field label="Username" hint="Friends add you with this handle">
                   <Input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="chaitu" />
@@ -260,6 +289,33 @@ export function OnboardingPage() {
                     </Button>
                   </div>
                 </Field>
+                <Field label={`Body weight (${units})`}>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={bodyWeight}
+                    onChange={(e) => setBodyWeight(e.target.value)}
+                    className="num"
+                  />
+                </Field>
+                <Field label="Goal">
+                  <div className="grid grid-cols-3 gap-2">
+                    {TRAINING_GOALS.map((g) => (
+                      <Button
+                        key={g.id}
+                        variant={trainingGoal === g.id ? 'primary' : 'secondary'}
+                        onClick={() => setTrainingGoal(g.id)}
+                        className="!px-2"
+                      >
+                        {g.label}
+                      </Button>
+                    ))}
+                  </div>
+                </Field>
+                <p className="text-[11px] text-faint mt-2">
+                  Targets: {macrosFromBody(displayWeightToKg(parseFloat(bodyWeight) || 70, units), trainingGoal).kcal} kcal ·{' '}
+                  {macrosFromBody(displayWeightToKg(parseFloat(bodyWeight) || 70, units), trainingGoal).protein_g}g protein
+                </p>
                 <Button variant="primary" onClick={saveProfile} disabled={!handle.trim() || loading} className="mt-2">
                   Get started
                 </Button>

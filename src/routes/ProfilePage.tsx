@@ -17,7 +17,8 @@ import { MetricHero } from '@/components/ui/MetricHero'
 import { SetupStatus } from '@/components/SetupStatus'
 import { useAuthStore } from '@/stores/authStore'
 import { useDataStore } from '@/stores/dataStore'
-import { computeWeekStats, computeStreak } from '@/lib/stats'
+import { computeWeekStats, computeActiveStreak } from '@/lib/stats'
+import { ProfileGoalsCard } from '@/features/profile/ProfileGoalsCard'
 import { usePageEnter } from '@/components/anime/hooks'
 import { APP_EXPORT_PREFIX } from '@/lib/brand'
 
@@ -57,7 +58,7 @@ export function ProfilePage() {
   const templates = useDataStore((s) => s.templates)
   const heroRef = usePageEnter<HTMLDivElement>([])
   const week = computeWeekStats(sessions)
-  const streak = computeStreak(sessions)
+  const streak = computeActiveStreak(sessions)
 
   function exportData() {
     const blob = new Blob([JSON.stringify({ sessions, templates, profile }, null, 2)], {
@@ -91,6 +92,8 @@ export function ProfilePage() {
           <MetricHero label="Streak" value={streak} unit="days" />
           <MetricHero label="This week" value={week.sessions} unit="workouts" />
         </div>
+
+        <ProfileGoalsCard />
 
         <SetupStatus />
 

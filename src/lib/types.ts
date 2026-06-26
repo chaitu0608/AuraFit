@@ -78,6 +78,8 @@ export interface Profile {
   avatar_url: string | null
   units: 'kg' | 'lb'
   bio: string | null
+  body_weight_kg?: number | null
+  training_goal?: 'cut' | 'maintain' | 'bulk' | null
   share_workouts: boolean
   auto_post_workout: boolean
   auto_post_pr: boolean

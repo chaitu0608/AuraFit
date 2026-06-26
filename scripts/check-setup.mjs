@@ -106,6 +106,28 @@ if (anonKey && anonKey !== 'your-anon-key') {
         : undefined,
     })
 
+    const goalsColsCheck = await fetch(
+      `${url}/rest/v1/profiles?select=body_weight_kg,training_goal&limit=1`,
+      { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } },
+    ).then(async (r) => {
+      if (!r.ok) {
+        const body = await r.text()
+        if (body.includes('body_weight_kg') || body.includes('training_goal')) {
+          return { error: 'profile goals columns missing' }
+        }
+        return { error: `HTTP ${r.status}` }
+      }
+      return { error: null }
+    })
+
+    checks.push({
+      name: 'Database migration (profile goals)',
+      ok: !goalsColsCheck.error,
+      action: goalsColsCheck.error
+        ? 'Run supabase/migrations/20260627000000_profile_goals.sql or npx supabase db push --linked'
+        : undefined,
+    })
+
     // parse-food edge function health (OPTIONS or POST without auth → should not be 404)
     const fnRes = await fetch(`${url}/functions/v1/parse-food`, {
       method: 'OPTIONS',

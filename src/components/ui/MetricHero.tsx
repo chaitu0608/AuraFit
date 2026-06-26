@@ -31,7 +31,20 @@ export function MetricHero({
         </span>
         {unit && <span className="text-[14px] font-semibold text-muted">{unit}</span>}
       </div>
-      {delta && <p className="text-[12px] text-accent font-medium mt-1">{delta}</p>}
+      {delta && (
+        <p
+          className={cn(
+            'text-[12px] font-medium mt-1',
+            delta.startsWith('+') || delta.includes('up ')
+              ? 'text-ok'
+              : delta.startsWith('-') || delta.includes('fewer')
+                ? 'text-warn'
+                : 'text-muted',
+          )}
+        >
+          {delta}
+        </p>
+      )}
     </div>
   )
 }

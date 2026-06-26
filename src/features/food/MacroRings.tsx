@@ -59,7 +59,7 @@ export function MacroRings({
   eaten,
   goals,
   volumeKg = 0,
-  volumeGoal = 5000,
+  volumeGoal = 3000,
   compact,
 }: {
   eaten: DayMacroSummary
@@ -94,7 +94,7 @@ export function MacroRings({
             <span className="w-2 h-2 rounded-full bg-ok" /> Protein
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-pull" /> Volume
+            <span className="w-2 h-2 rounded-full bg-pull" /> Baseline
           </span>
         </div>
       )}

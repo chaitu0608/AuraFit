@@ -136,8 +136,20 @@
   }
 
   .metric-hero {
-    @apply rounded-r border border-line p-4;
+    @apply rounded-r border border-line p-4 relative overflow-hidden;
     background: color-mix(in srgb, var(--surface2) 80%, transparent);
+    border-left: 3px solid var(--accent);
+  }
+
+  .scoreboard-band {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 12%, var(--surface)) 0%,
+      color-mix(in srgb, var(--surface2) 90%, transparent) 55%,
+      var(--surface) 100%
+    );
+    border-top: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-bottom: 1px solid var(--line);
   }
 
   .animated-tabs {
