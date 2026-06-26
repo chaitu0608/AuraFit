@@ -38,6 +38,10 @@ export default {
       maxWidth: {
         app: '520px',
       },
+      boxShadow: {
+        glow: '0 8px 32px var(--glow)',
+        'glow-sm': '0 4px 16px var(--accent-dim)',
+      },
       fontFamily: {
         display: ['var(--font-display)'],
         body: ['var(--font-body)'],

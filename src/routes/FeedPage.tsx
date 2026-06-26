@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, UserPlus } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
-import { Card, SectionHeader, Empty } from '@/components/ui/Card'
+import { SectionHeader, Empty } from '@/components/ui/Card'
+import { SurfaceCard } from '@/components/ui/SurfaceCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { supabase } from '@/lib/supabase'
@@ -53,7 +54,7 @@ export function FeedPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell hero>
       <SectionHeader
         title="Community"
         subtitle="Workouts from you & friends"
@@ -69,7 +70,7 @@ export function FeedPage() {
       <div ref={feedRef}>
         {posts.length ? (
           posts.map((p) => (
-            <Card key={p.id} data-stagger className="!p-4">
+            <SurfaceCard key={p.id} data-stagger className="!p-4 mb-3">
               <div className="flex items-center gap-3 mb-3">
                 <Avatar handle={p.profile?.handle} name={p.profile?.display_name} size="sm" />
                 <div className="flex-1 min-w-0">
@@ -93,7 +94,7 @@ export function FeedPage() {
                 ))}
               </div>
               <PostComments postId={p.id} />
-            </Card>
+            </SurfaceCard>
           ))
         ) : (
           <Empty

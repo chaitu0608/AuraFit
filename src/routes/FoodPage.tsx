@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
-import { Card, Empty, SectionHeader } from '@/components/ui/Card'
+import { Empty, SectionHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { SurfaceCard } from '@/components/ui/SurfaceCard'
+import { FoodParseSkeleton } from '@/components/ui/Skeleton'
 import { FoodInput } from '@/features/food/FoodInput'
 import { FoodItemCard } from '@/features/food/FoodItemCard'
 import { MealSlotChips } from '@/features/food/MealSlotChips'
@@ -12,7 +14,7 @@ import { MacroRings } from '@/features/food/MacroRings'
 import { DayMacroSummaryBar } from '@/features/food/DayMacroSummary'
 import { useFoodStore, getOrCreateMeal } from '@/stores/foodStore'
 import { useAuthStore } from '@/stores/authStore'
-import { parseFoodText } from '@/lib/parseFood'
+import { parseFoodText, ParseFoodError, parseFoodHelpUrl } from '@/lib/parseFood'
 import {
   currentMealSlot,
   mealsForDate,
@@ -24,6 +26,8 @@ import {
 } from '@/lib/food'
 import { key, pretty, todayKey, fromKey } from '@/lib/utils'
 import type { RecentFood } from '@/stores/foodStore'
+import { hapticSuccess, hapticLight, hapticWarning } from '@/lib/haptics'
+import { usePageEnter, useExitableMount } from '@/components/anime/hooks'
 
 export function FoodPage() {
   const navigate = useNavigate()
@@ -45,7 +49,12 @@ export function FoodPage() {
 
   const [slot, setSlot] = useState<MealSlot>(currentMealSlot())
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; kind?: ParseFoodError['kind'] } | null>(
+    null,
+  )
+  const pageRef = usePageEnter<HTMLDivElement>([dateKey])
+  const pendingMount = useExitableMount(pendingItems.length > 0)
+  const errorMount = useExitableMount(Boolean(error))
 
   const meals = mealsForDate(mealsByDate, dateKey)
   const eaten = summariseDay(meals)
@@ -63,7 +72,12 @@ export function FoodPage() {
       const result = await parseFoodText(text, slot)
       setPendingItems(result.items)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to parse food')
+      const err =
+        e instanceof ParseFoodError
+          ? e
+          : new ParseFoodError(e instanceof Error ? e.message : 'Failed to parse food')
+      setError({ message: err.message, kind: err.kind })
+      void hapticWarning()
     } finally {
       setLoading(false)
     }
@@ -90,6 +104,7 @@ export function FoodPage() {
       })
     }
     clearPending()
+    void hapticSuccess()
   }
 
   const handleRecentSelect = (item: RecentFood) => {
@@ -110,37 +125,71 @@ export function FoodPage() {
 
   return (
     <AppShell title="Food" subtitle={pretty(dateKey)} fab={false}>
+      <div ref={pageRef}>
       <div className="flex items-center justify-between mb-4">
-        <button type="button" className="icon-btn" onClick={() => shiftDate(-1)} aria-label="Previous day">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => {
+            void hapticLight()
+            shiftDate(-1)
+          }}
+          aria-label="Previous day"
+        >
           <ChevronLeft size={18} />
         </button>
-        <span className="text-sm font-medium text-muted">{dateKey === todayKey ? 'Today' : pretty(dateKey)}</span>
-        <button type="button" className="icon-btn" onClick={() => shiftDate(1)} aria-label="Next day">
+        <span className="text-sm font-bold text-text">{dateKey === todayKey ? 'Today' : pretty(dateKey)}</span>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => {
+            void hapticLight()
+            shiftDate(1)
+          }}
+          aria-label="Next day"
+        >
           <ChevronRight size={18} />
         </button>
       </div>
 
-      <Card className="!p-4 mb-4 flex flex-col items-center">
+      <SurfaceCard className="mb-5 flex flex-col items-center">
         <MacroRings eaten={eaten} goals={goals} />
         <div className="w-full mt-4">
           <DayMacroSummaryBar eaten={eaten} goals={goals} />
         </div>
-      </Card>
+      </SurfaceCard>
 
-      <SectionHeader title="Log meal" subtitle="Type or speak what you ate" />
+      <SectionHeader title="Log meal" subtitle="Describe what you ate" />
       <MealSlotChips value={slot} onChange={setSlot} />
       <div className="mt-3">
         <FoodInput slot={slot} onParse={handleParse} loading={loading} />
       </div>
 
-      {error && (
-        <div className="mt-3 p-3 rounded-rs bg-danger/10 border border-danger/30 text-[13px] text-danger">
-          {error}
+      {loading && <FoodParseSkeleton />}
+
+      {errorMount.shouldRender && error && (
+        <div
+          ref={errorMount.ref}
+          className="mt-3 p-3 rounded-rs bg-danger/10 border border-danger/30 text-[13px] text-danger"
+        >
+          <p>{error.message}</p>
+          {(error.kind === 'missing_secret' ||
+            error.kind === 'not_deployed' ||
+            error.kind === 'invalid_key' ||
+            error.kind === 'quota') && (
+            <button
+              type="button"
+              className="mt-2 text-[12px] font-semibold underline underline-offset-2"
+              onClick={() => window.open(parseFoodHelpUrl(error.kind ?? 'unknown'), '_blank')}
+            >
+              Why? → Open Supabase dashboard
+            </button>
+          )}
         </div>
       )}
 
-      {pendingItems.length > 0 && (
-        <div className="mt-5">
+      {pendingMount.shouldRender && pendingItems.length > 0 && (
+        <div ref={pendingMount.ref} className="mt-5">
           <SectionHeader
             title="Review"
             subtitle={`${pendingItems.length} item${pendingItems.length > 1 ? 's' : ''} detected`}
@@ -166,30 +215,33 @@ export function FoodPage() {
           <SectionHeader title="Logged today" />
           {meals.map((meal) => (
             <div key={meal.id} className="mb-4">
-              <div className="text-[12px] font-semibold text-muted uppercase tracking-wider mb-2">
+              <div className="text-[11px] font-bold text-accent uppercase tracking-widest mb-2">
                 {slotLabel(meal.slot)}
               </div>
               {meal.logs.map((log) => (
-                <Card key={log.id} className="!p-3 !mb-2">
-                  <div className="font-medium text-[14px]">{log.name || log.raw_text}</div>
-                  <div className="text-[11px] text-muted mt-0.5">
-                    {log.qty} {log.unit} · {log.kcal ?? 0} kcal · {log.protein_g ?? 0}P · {log.carbs_g ?? 0}C · {log.fat_g ?? 0}F
+                <SurfaceCard key={log.id} className="!p-3 !mb-2">
+                  <div className="font-semibold text-[15px]">{log.name || log.raw_text}</div>
+                  <div className="text-[11px] text-muted mt-1 num">
+                    {log.qty} {log.unit} · {log.kcal ?? 0} kcal · {log.protein_g ?? 0}P · {log.carbs_g ?? 0}C ·{' '}
+                    {log.fat_g ?? 0}F
                   </div>
-                </Card>
+                </SurfaceCard>
               ))}
             </div>
           ))}
         </div>
       ) : (
-        !pendingItems.length && (
+        !pendingItems.length &&
+        !loading && (
           <Empty
             title="No meals logged"
-            subtitle="Describe what you ate and we'll parse calories and macros."
+            subtitle="Describe what you ate — we'll parse calories and macros."
           />
         )
       )}
 
       <RecentFoodsList items={recentFoods} onSelect={handleRecentSelect} />
+      </div>
     </AppShell>
   )
 }

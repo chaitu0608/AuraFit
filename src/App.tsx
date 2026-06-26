@@ -16,6 +16,7 @@ import { ProfilePage } from '@/routes/ProfilePage'
 import { ProgramsPage } from '@/routes/ProgramsPage'
 import { FoodPage } from '@/routes/FoodPage'
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
+import { ToastHost } from '@/components/ui/Toast'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +79,7 @@ export default function App() {
       <BrowserRouter>
         <datalist id="exlist" />
         <PWAInstallPrompt />
+        <ToastHost />
         <AppRoutes />
       </BrowserRouter>
     </QueryClientProvider>

@@ -15,7 +15,8 @@ import { usePersist } from '@/hooks/usePersist'
 import { pretty } from '@/lib/utils'
 import { newSet } from '@/lib/sets'
 import { writeStrengthWorkout } from '@/lib/healthkit'
-import { useFadeIn } from '@/components/anime/hooks'
+import { usePageEnter } from '@/components/anime/hooks'
+import { showToast } from '@/components/ui/Toast'
 import type { Session } from '@/lib/types'
 
 function ensureSession(sessions: Record<string, Session>, k: string): Session {
@@ -33,7 +34,7 @@ export function DayPage() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pageRef = useFadeIn<HTMLDivElement>([dateKey])
+  const pageRef = usePageEnter<HTMLDivElement>([dateKey])
   const session = dateKey ? sessions[dateKey] : undefined
 
   useEffect(() => {
@@ -225,7 +226,7 @@ export function DayPage() {
             size="sm"
             onClick={() => {
               const names = exercises.map((e) => e.name.trim()).filter(Boolean)
-              if (!names.length) return alert('Add exercises first')
+              if (!names.length) return showToast('Add exercises first', 'error')
               const nm = prompt('Routine name:', session.name || '')
               if (nm === null) return
               const templates = useDataStore.getState().templates

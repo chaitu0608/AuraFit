@@ -1,41 +1,60 @@
 #!/usr/bin/env node
 /**
- * One-time Supabase Auth setup for email OTP login (AuraFit).
- * Run: node scripts/supabase-auth-setup.mjs
+ * One-time Supabase Auth setup for AuraFit (email login on iPhone + web).
+ * Run: npm run supabase-auth-setup
  */
 const PROJECT = 'hhgxmupzodiiqgqifmaz'
 const BASE = `https://supabase.com/dashboard/project/${PROJECT}`
 
 console.log(`
-=== AuraFit — Supabase email OTP setup ===
+=== AuraFit — Supabase email login setup ===
 
-Do these ONCE in the Supabase Dashboard:
+WHAT WAS WRONG
+  • Magic Link template used {{ .ConfirmationURL }} only → email had a link, no code
+  • Link redirected to localhost → broken on iPhone
+  • "Confirm email" may have been ON → wrong email template
+  • MCP was linked to old project (uqmwhmicwzpollunznks) — use project_ref=${PROJECT}
 
-1. Email provider
+APP FIX (rebuild with npm run ios:deploy)
+  • iPhone: email link opens AuraFit via com.chaitu.aurafit.app://auth/callback
+  • You can tap the link OR enter a 6-digit code
+
+--- DASHBOARD (do once, click Save on each page) ---
+
+1. SMTP (required for real emails)
+   ${BASE}/auth/smtp
+   Enable Custom SMTP → Gmail: smtp.gmail.com:587 + app password
+
+2. Redirect URL (required for iPhone link login)
+   ${BASE}/auth/url-configuration
+   Add to Redirect URLs:
+     com.chaitu.aurafit.app://auth/callback
+   Site URL can stay http://localhost:5173 for web dev
+   SAVE
+
+3. Email provider
    ${BASE}/auth/providers
-   • Email → ON
-   • "Confirm email" → OFF  (required for 6-digit code login)
-   • Save
+   Email → ON
+   Confirm email → OFF
+   SAVE
 
-2. Email template (Magic Link)
-   ${BASE}/auth/templates
-   • Open "Magic Link"
-   • Body must include:  {{ .Token }}
-   • Example:
+4. Magic Link template
+   ${BASE}/auth/templates → Magic Link
+   Subject: Your AuraFit login code
+   Body (paste, then SAVE):
 
-     Your AuraFit login code is: {{ .Token }}
-     This code expires in 1 hour.
+<h2>Your AuraFit login code</h2>
+<p>Your code is: <strong>{{ .Token }}</strong></p>
+<p>On iPhone you can tap the sign-in link below, or enter the code in the app.</p>
+<p><a href="{{ .ConfirmationURL }}">Sign in to AuraFit</a></p>
+<p>This expires in 1 hour.</p>
 
-   • Save
+--- TEST ---
 
-3. Test on iPhone / web
-   • Open AuraFit → enter email → Send login code
-   • Check inbox + spam for 6-digit code
-   • Enter code → Verify & continue
+  npm run ios:deploy → Run in Xcode
+  Send login code → tap link OR enter 6 digits
 
-If you only get a clickable link (no 6-digit code), step 2 was not saved correctly.
-
-Dashboard links:
-  Auth providers: ${BASE}/auth/providers
-  Email templates: ${BASE}/auth/templates
+MCP: ensure ~/.cursor/mcp.json has:
+  "url": "https://mcp.supabase.com/mcp?project_ref=${PROJECT}"
+  Then restart Cursor.
 `)

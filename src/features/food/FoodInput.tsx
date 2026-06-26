@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
-import { Mic, MicOff, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Textarea } from '@/components/ui/Textarea'
+import { Mic, MicOff, Sparkles, ArrowUp } from 'lucide-react'
 import type { MealSlot } from '@/lib/food'
+import { hapticLight } from '@/lib/haptics'
+import { useTapBurst } from '@/components/anime/hooks'
 
 interface SpeechRecognitionEvent {
   results: { [index: number]: { [index: number]: { transcript: string } } }
@@ -38,6 +38,7 @@ export function FoodInput({
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
+  const onTap = useTapBurst()
 
   const startVoice = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -55,6 +56,7 @@ export function FoodInput({
     recognitionRef.current = rec
     rec.start()
     setListening(true)
+    void hapticLight()
   }
 
   const stopVoice = () => {
@@ -64,6 +66,7 @@ export function FoodInput({
 
   const handleSubmit = async () => {
     if (!text.trim() || loading) return
+    void hapticLight()
     await onParse(text.trim())
     setText('')
   }
@@ -71,42 +74,51 @@ export function FoodInput({
   const hasVoice = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
 
   return (
-    <div className="space-y-3">
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={`What did you eat for ${slot}? e.g. 1 cup dal and 2 rotis`}
-        rows={3}
-        className="resize-none"
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            void handleSubmit()
-          }
-        }}
-      />
-      <div className="flex gap-2">
-        <Button
-          variant="primary"
-          className="flex-1 gap-2"
-          disabled={!text.trim() || loading}
-          onClick={() => void handleSubmit()}
-        >
-          <Sparkles size={16} />
-          {loading ? 'Parsing…' : 'Parse & log'}
-        </Button>
-        {hasVoice && (
-          <Button
+    <div className="food-input-bar">
+      <div className="relative flex items-end gap-2 rounded-r border border-line bg-surface2 p-2 shadow-glow-sm">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={`I ate… (${slot})`}
+          rows={2}
+          className="flex-1 bg-transparent text-[15px] text-text placeholder:text-faint resize-none outline-none px-2 py-2 min-h-[44px] max-h-28"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              void handleSubmit()
+            }
+          }}
+        />
+        <div className="flex flex-col gap-1.5 pb-1">
+          {hasVoice && (
+            <button
+              type="button"
+              className="icon-btn !w-10 !h-10"
+              aria-label={listening ? 'Stop voice' : 'Voice input'}
+              onClick={listening ? stopVoice : startVoice}
+            >
+              {listening ? <MicOff size={18} className="text-accent" /> : <Mic size={18} />}
+            </button>
+          )}
+          <button
             type="button"
-            variant="secondary"
-            className="!px-3"
-            aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-            onClick={listening ? stopVoice : startVoice}
+            onPointerDown={onTap}
+            disabled={!text.trim() || loading}
+            onClick={() => void handleSubmit()}
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-accent text-accent-ink disabled:opacity-40 shadow-glow-sm active:scale-90 transition-transform"
+            aria-label="Parse food"
           >
-            {listening ? <MicOff size={18} /> : <Mic size={18} />}
-          </Button>
-        )}
+            {loading ? (
+              <Sparkles size={18} className="animate-pulse" />
+            ) : (
+              <ArrowUp size={20} strokeWidth={2.5} />
+            )}
+          </button>
+        </div>
       </div>
+      <p className="text-[11px] text-faint mt-2 px-1">
+        Try: &quot;i ate a bowl of dal and 2 rotis&quot;
+      </p>
     </div>
   )
 }

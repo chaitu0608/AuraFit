@@ -10,14 +10,15 @@ import {
   BarChart3,
 } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
-import { Card, SectionHeader } from '@/components/ui/Card'
+import { SectionHeader } from '@/components/ui/Card'
+import { SurfaceCard } from '@/components/ui/SurfaceCard'
 import { Avatar } from '@/components/ui/Avatar'
-import { StatCard } from '@/components/ui/StatCard'
+import { MetricHero } from '@/components/ui/MetricHero'
 import { SetupStatus } from '@/components/SetupStatus'
 import { useAuthStore } from '@/stores/authStore'
 import { useDataStore } from '@/stores/dataStore'
 import { computeWeekStats, computeStreak } from '@/lib/stats'
-import { useFadeIn } from '@/components/anime/hooks'
+import { usePageEnter } from '@/components/anime/hooks'
 import { APP_EXPORT_PREFIX } from '@/lib/brand'
 
 function MenuRow({
@@ -54,7 +55,7 @@ export function ProfilePage() {
   const profile = useAuthStore((s) => s.profile)
   const sessions = useDataStore((s) => s.sessions)
   const templates = useDataStore((s) => s.templates)
-  const heroRef = useFadeIn<HTMLDivElement>([])
+  const heroRef = usePageEnter<HTMLDivElement>([])
   const week = computeWeekStats(sessions)
   const streak = computeStreak(sessions)
 
@@ -69,9 +70,9 @@ export function ProfilePage() {
   }
 
   return (
-    <AppShell title="You" fab={false}>
+    <AppShell title="You" fab={false} hero>
       <div ref={heroRef}>
-        <Card className="!p-5 mb-4">
+        <SurfaceCard className="!p-5 mb-4">
           <div className="flex items-center gap-4">
             <Avatar name={profile?.display_name} handle={profile?.handle} size="lg" />
             <div className="flex-1 min-w-0">
@@ -84,33 +85,33 @@ export function ProfilePage() {
               </p>
             </div>
           </div>
-        </Card>
+        </SurfaceCard>
 
         <div className="grid grid-cols-2 gap-2 mb-5">
-          <StatCard label="Streak" value={streak} unit="days" tone="accent" />
-          <StatCard label="This week" value={week.sessions} unit="workouts" />
+          <MetricHero label="Streak" value={streak} unit="days" />
+          <MetricHero label="This week" value={week.sessions} unit="workouts" />
         </div>
 
         <SetupStatus />
 
         <SectionHeader title="Training" className="mt-2" />
-        <Card className="!p-0 !px-4">
+        <SurfaceCard className="!p-0 !px-4 mb-4">
           <MenuRow icon={Dumbbell} label="My routines" sub="Templates & programs" onClick={() => navigate('/workouts')} />
           <MenuRow icon={List} label="Exercise library" sub="Types, rename, merge" onClick={() => navigate('/exercises')} />
           <MenuRow icon={Trophy} label="Programs & challenges" onClick={() => navigate('/programs')} />
           <MenuRow icon={BarChart3} label="Compare PRs" onClick={() => navigate('/compare')} />
-        </Card>
+        </SurfaceCard>
 
         <SectionHeader title="Community" />
-        <Card className="!p-0 !px-4">
+        <SurfaceCard className="!p-0 !px-4 mb-4">
           <MenuRow icon={Users} label="Friends" sub="Add gym partners by handle" onClick={() => navigate('/friends')} />
-        </Card>
+        </SurfaceCard>
 
         <SectionHeader title="App" />
-        <Card className="!p-0 !px-4">
+        <SurfaceCard className="!p-0 !px-4">
           <MenuRow icon={Settings} label="Settings & sync" onClick={() => navigate('/settings')} />
           <MenuRow icon={Download} label="Export backup" onClick={exportData} />
-        </Card>
+        </SurfaceCard>
       </div>
     </AppShell>
   )

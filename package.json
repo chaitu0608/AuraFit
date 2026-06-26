@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^7.0.1",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.0",
     "@capacitor/haptics": "^6.0.2",
     "@capacitor/ios": "^6.2.0",

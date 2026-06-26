@@ -34,6 +34,14 @@ function run(cmd) {
 try {
   if (process.env.SUPABASE_ACCESS_TOKEN) {
     console.log('Using SUPABASE_ACCESS_TOKEN from environment.\n')
+    run(`npx supabase login --token ${process.env.SUPABASE_ACCESS_TOKEN}`)
+    run(`npx supabase link --project-ref ${PROJECT_REF}`)
+  }
+  if (process.env.OPENAI_API_KEY) {
+    console.log('Setting OPENAI_API_KEY secret…\n')
+    run(
+      `npx supabase secrets set OPENAI_API_KEY=${process.env.OPENAI_API_KEY} --project-ref ${PROJECT_REF}`,
+    )
   }
   run(`npx supabase functions deploy parse-food --project-ref ${PROJECT_REF}`)
   console.log('\n✓ Deployed parse-food successfully.')

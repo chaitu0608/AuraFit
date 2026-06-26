@@ -1,13 +1,18 @@
 import { Capacitor } from '@capacitor/core'
 import { supabase } from '@/lib/supabase'
+import { getEmailRedirectTo } from '@/lib/authDeepLink'
 
 /** Free Personal Team cannot use Sign in with Apple — requires paid Apple Developer Program. */
 export const NATIVE_APPLE_SIGNIN_ENABLED = false
 
 export async function sendEmailOtp(email: string) {
+  const redirectTo = getEmailRedirectTo()
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim(),
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      ...(redirectTo ? { emailRedirectTo: redirectTo } : {}),
+    },
   })
   if (error) throw error
 }

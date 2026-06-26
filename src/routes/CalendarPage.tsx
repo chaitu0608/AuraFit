@@ -1,13 +1,15 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Flame, UtensilsCrossed } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flame, UtensilsCrossed, Dumbbell } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
-import { SectionHeader, Card } from '@/components/ui/Card'
-import { StatCard } from '@/components/ui/StatCard'
+import { SectionHeader } from '@/components/ui/Card'
+import { MetricHero } from '@/components/ui/MetricHero'
+import { SurfaceCard } from '@/components/ui/SurfaceCard'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import { useUIStore } from '@/stores/uiStore'
 import { useDataStore } from '@/stores/dataStore'
 import { useAuthStore } from '@/stores/authStore'
-import { useStaggerIn, useFadeIn, animateStreakFire } from '@/components/anime/hooks'
+import { useStaggerIn, usePageEnter, animateStreakFire, useTapBurst } from '@/components/anime/hooks'
 import { MON, key, todayKey } from '@/lib/utils'
 import { colorFor } from '@/lib/summarise'
 import { computeWeekStats, computeStreak } from '@/lib/stats'
@@ -18,6 +20,7 @@ import { useFoodStore } from '@/stores/foodStore'
 import { mealsForDate, summariseDay } from '@/lib/food'
 import type { Session } from '@/lib/types'
 import { useEffect, useRef } from 'react'
+import { hapticLight } from '@/lib/haptics'
 
 export function CalendarPage() {
   const navigate = useNavigate()
@@ -27,14 +30,16 @@ export function CalendarPage() {
   const sessions = useDataStore((s) => s.sessions)
   const mealsByDate = useFoodStore((s) => s.mealsByDate)
   const nutritionGoals = useFoodStore((s) => s.goals)
-  const heroRef = useFadeIn<HTMLDivElement>([])
+  const heroRef = usePageEnter<HTMLDivElement>([])
   const calRef = useStaggerIn<HTMLDivElement>([month.getMonth(), month.getFullYear()])
   const streakRef = useRef<HTMLSpanElement>(null)
+  const onDayTap = useTapBurst()
 
   const week = computeWeekStats(sessions)
   const streak = computeStreak(sessions)
   const todayMeals = mealsForDate(mealsByDate, todayKey)
   const todayMacros = summariseDay(todayMeals)
+  const todaySession = sessions[todayKey] as Session | undefined
 
   useEffect(() => {
     if (streak > 0 && streakRef.current) animateStreakFire(streakRef.current)
@@ -59,16 +64,20 @@ export function CalendarPage() {
         key={k}
         type="button"
         data-stagger
-        onClick={() => navigate(`/day/${k}`)}
-        className={`aspect-square rounded-rs flex flex-col items-center justify-center gap-1 transition-colors active:scale-95 ${
+        onPointerDown={onDayTap}
+        onClick={() => {
+          void hapticLight()
+          navigate(`/day/${k}`)
+        }}
+        className={`aspect-square rounded-rs flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform ${
           isToday
-            ? 'bg-accent-dim border border-accent/40 ring-1 ring-accent/20'
+            ? 'bg-accent-dim border border-accent/50 shadow-glow-sm'
             : s
               ? 'bg-surface2 border border-line'
-              : 'hover:bg-surface2/60'
+              : 'border border-transparent hover:bg-surface2/80'
         }`}
       >
-        <span className={`num text-[13px] font-medium ${isToday ? 'text-accent' : 'text-text'}`}>{d}</span>
+        <span className={`num text-[13px] font-bold ${isToday ? 'text-accent' : 'text-text'}`}>{d}</span>
         {col && <span className="w-1.5 h-1.5 rounded-full" style={{ background: col }} />}
       </button>,
     )
@@ -82,21 +91,23 @@ export function CalendarPage() {
   }
 
   return (
-    <AppShell hideNav={false}>
-      <div ref={heroRef} className="mb-5">
-        <p className="text-sm text-muted mb-0.5">{greeting()} · {APP_NAME}</p>
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="font-display text-[26px] font-bold tracking-tight">
-            {profile?.display_name || profile?.handle || 'Lifter'}
+    <AppShell hideNav={false} hero>
+      <div ref={heroRef} className="mb-6">
+        <p className="text-[12px] font-semibold text-muted uppercase tracking-widest mb-1">
+          {greeting()} · {APP_NAME}
+        </p>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="font-display text-[32px] font-extrabold tracking-tight leading-none">
+            {profile?.display_name || profile?.handle || 'Athlete'}
           </h1>
           {streak > 0 && (
             <button
               type="button"
               onClick={() => navigate('/feed')}
-              className="pill bg-accent-dim text-accent border border-accent/25 gap-1.5"
+              className="pill bg-accent-dim text-accent border border-accent/30 gap-1.5 shadow-glow-sm active:scale-95 transition-transform"
             >
-              <Flame size={14} className="text-accent-warm" />
-              <span ref={streakRef} className="num">
+              <Flame size={16} className="text-accent-warm" />
+              <span ref={streakRef} className="num font-bold">
                 {streak}
               </span>
             </button>
@@ -104,22 +115,22 @@ export function CalendarPage() {
         </div>
       </div>
 
-      <Card className="!p-4 mb-5">
-        <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <MetricHero label="Week" value={week.sessions} unit="sessions" />
+        <MetricHero label="Sets" value={week.sets} />
+        <MetricHero label="Volume" value={week.volumeKg} unit="kg" />
+      </div>
+
+      <SurfaceCard active className="mb-5">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <div className="section-title">Today</div>
-            <p className="section-sub mt-0.5">Nutrition & training</p>
+            <div className="font-display text-[17px] font-bold">Today</div>
+            <p className="text-[12px] text-muted mt-0.5">
+              {todaySession ? 'Workout logged' : 'No workout yet'} · {todayMacros.kcal} kcal
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/food')}
-            className="pill bg-accent-dim text-accent border border-accent/25 gap-1.5 text-[12px] font-semibold"
-          >
-            <UtensilsCrossed size={14} />
-            Log food
-          </button>
         </div>
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-4">
           <MacroRings
             eaten={todayMacros}
             goals={nutritionGoals}
@@ -128,28 +139,54 @@ export function CalendarPage() {
             compact
           />
         </div>
-      </Card>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="primary"
+            className="gap-2"
+            onClick={() => {
+              void hapticLight()
+              navigate('/food')
+            }}
+          >
+            <UtensilsCrossed size={16} />
+            Log food
+          </Button>
+          <Button
+            variant="secondary"
+            className="gap-2"
+            onClick={() => {
+              void hapticLight()
+              navigate(`/day/${todayKey}`)
+            }}
+          >
+            <Dumbbell size={16} />
+            {todaySession ? 'View workout' : 'Start workout'}
+          </Button>
+        </div>
+      </SurfaceCard>
 
-      <div className="grid grid-cols-3 gap-2 mb-5" data-stagger>
-        <StatCard label="This week" value={week.sessions} unit="sessions" tone="accent" />
-        <StatCard label="Sets" value={week.sets} />
-        <StatCard label="Volume" value={week.volumeKg} unit="kg" />
-      </div>
-
-      <Card className="!p-4 mb-5">
+      <SurfaceCard className="mb-5">
         <SectionHeader title="Activity" subtitle="Last 7 days" />
         <WeeklyActivityBar sessions={sessions} days={week.days} />
-      </Card>
+      </SurfaceCard>
 
       <SectionHeader
         title="Calendar"
         subtitle={`${MON[mo]} ${y}`}
         action={
           <div className="flex gap-1">
-            <button type="button" className="icon-btn !w-8 !h-8" onClick={() => setMonth(new Date(y, mo - 1, 1))}>
+            <button
+              type="button"
+              className="icon-btn !w-8 !h-8"
+              onClick={() => setMonth(new Date(y, mo - 1, 1))}
+            >
               <ChevronLeft size={16} />
             </button>
-            <button type="button" className="icon-btn !w-8 !h-8" onClick={() => setMonth(new Date(y, mo + 1, 1))}>
+            <button
+              type="button"
+              className="icon-btn !w-8 !h-8"
+              onClick={() => setMonth(new Date(y, mo + 1, 1))}
+            >
               <ChevronRight size={16} />
             </button>
           </div>
@@ -157,12 +194,12 @@ export function CalendarPage() {
       />
       <div className="grid grid-cols-7 gap-1 mb-1 px-0.5">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-          <span key={i} className="text-center text-[10px] font-semibold text-faint uppercase">
+          <span key={i} className="text-center text-[10px] font-bold text-faint uppercase">
             {d}
           </span>
         ))}
       </div>
-      <div ref={calRef} className="grid grid-cols-7 gap-1 mb-4">
+      <div ref={calRef} className="grid grid-cols-7 gap-1.5 mb-4">
         {cells}
       </div>
 

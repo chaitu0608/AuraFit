@@ -1,8 +1,9 @@
 import { Trash2 } from 'lucide-react'
-import { Card } from '@/components/ui/Card'
+import { SurfaceCard } from '@/components/ui/SurfaceCard'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import type { ParsedFoodItem } from '@/lib/food'
+import { useEnter } from '@/components/anime/hooks'
 
 export function FoodItemCard({
   item,
@@ -14,9 +15,11 @@ export function FoodItemCard({
   onRemove: () => void
 }) {
   const lowConfidence = item.confidence < 0.6
+  const enterRef = useEnter<HTMLDivElement>([item.name, item.qty])
 
   return (
-    <Card className="!p-3 !mb-2">
+    <div ref={enterRef} className="mb-2">
+    <SurfaceCard className="!p-3" active={lowConfidence}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
           <div className="font-medium text-[14px] truncate">{item.name}</div>
@@ -56,6 +59,7 @@ export function FoodItemCard({
           AI estimate — tap to edit
         </Badge>
       )}
-    </Card>
+    </SurfaceCard>
+    </div>
   )
 }
