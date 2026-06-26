@@ -1,0 +1,54 @@
+:root {
+  --bg: #090a0c;
+  --bg-elevated: #0e1014;
+  --surface: #15171c;
+  --surface2: #1c1f26;
+  --surface3: #242830;
+  --line: rgba(255, 255, 255, 0.06);
+  --line2: rgba(255, 255, 255, 0.12);
+  --text: #f4f5f7;
+  --muted: #8b929e;
+  --faint: #565d6a;
+  --accent: #5eead4;
+  --accent-dim: rgba(94, 234, 212, 0.14);
+  --accent-ink: #042f2e;
+  --accent-warm: #fb923c;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --leg: #fb923c;
+  --push: #60a5fa;
+  --pull: #2dd4bf;
+  --arm: #a78bfa;
+  --cardio: #f472b6;
+  --rest: #64748b;
+  --other: #94a3b8;
+  --glow: rgba(94, 234, 212, 0.35);
+  --r: 16px;
+  --rs: 12px;
+  --rxl: 22px;
+  --nav-h: 64px;
+  --header-h: 56px;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8f9fb;
+    --bg-elevated: #ffffff;
+    --surface: #ffffff;
+    --surface2: #f1f3f6;
+    --surface3: #e8ebf0;
+    --line: rgba(15, 17, 21, 0.08);
+    --line2: rgba(15, 17, 21, 0.14);
+    --text: #0f1115;
+    --muted: #5c6370;
+    --faint: #9aa3b0;
+    --accent: #0d9488;
+    --accent-dim: rgba(13, 148, 136, 0.1);
+    --accent-ink: #ffffff;
+    --accent-warm: #ea580c;
+    --glow: rgba(13, 148, 136, 0.2);
+  }
+}
