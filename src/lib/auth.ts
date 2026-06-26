@@ -1,16 +1,32 @@
 import { Capacitor } from '@capacitor/core'
+import { supabase } from '@/lib/supabase'
+
+/** Free Personal Team cannot use Sign in with Apple — requires paid Apple Developer Program. */
+export const NATIVE_APPLE_SIGNIN_ENABLED = false
+
+export async function sendEmailOtp(email: string) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.trim(),
+    options: { shouldCreateUser: true },
+  })
+  if (error) throw error
+}
+
+export async function verifyEmailOtp(email: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: email.trim(),
+    token: token.trim(),
+    type: 'email',
+  })
+  if (error) throw error
+  return data
+}
 
 export async function signInWithApple(): Promise<{
   identityToken: string
   user?: string
 } | null> {
-  if (!Capacitor.isNativePlatform()) {
-    // Dev fallback: email sign-in prompt
-    const email = prompt('Dev mode: enter email for magic link sign-in')
-    if (!email) return null
-    const { supabase } = await import('./supabase')
-    await supabase.auth.signInWithOtp({ email })
-    alert('Check your email for the magic link.')
+  if (!NATIVE_APPLE_SIGNIN_ENABLED || !Capacitor.isNativePlatform()) {
     return null
   }
 
@@ -18,7 +34,7 @@ export async function signInWithApple(): Promise<{
     const { SignInWithApple } = await import('@capacitor-community/apple-sign-in')
     const result = await SignInWithApple.authorize({
       clientId: 'com.aurafit.app',
-      redirectURI: 'https://uqmwhmicwzpollunznks.supabase.co/auth/v1/callback',
+      redirectURI: 'https://hhgxmupzodiiqgqifmaz.supabase.co/auth/v1/callback',
       scopes: 'email name',
     })
     return {
@@ -31,7 +47,6 @@ export async function signInWithApple(): Promise<{
 }
 
 export async function completeAppleSignIn(identityToken: string) {
-  const { supabase } = await import('./supabase')
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
     token: identityToken,

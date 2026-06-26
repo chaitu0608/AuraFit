@@ -14,6 +14,8 @@ import { FriendsPage } from '@/routes/FriendsPage'
 import { ComparePage } from '@/routes/ComparePage'
 import { ProfilePage } from '@/routes/ProfilePage'
 import { ProgramsPage } from '@/routes/ProgramsPage'
+import { FoodPage } from '@/routes/FoodPage'
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +58,8 @@ function AppRoutes() {
       <Route path="/day/:dateKey" element={<DayPage />} />
       <Route path="/workouts" element={<WorkoutsPage />} />
       <Route path="/workouts/:id" element={<WorkoutEditPage />} />
+      <Route path="/food" element={<FoodPage />} />
+      <Route path="/food/:dateKey" element={<FoodPage />} />
       <Route path="/feed" element={<FeedPage />} />
       <Route path="/friends" element={<FriendsPage />} />
       <Route path="/compare" element={<ComparePage />} />
@@ -73,6 +77,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <datalist id="exlist" />
+        <PWAInstallPrompt />
         <AppRoutes />
       </BrowserRouter>
     </QueryClientProvider>

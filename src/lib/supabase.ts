@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 // Project URL is public and safe to ship in the app bundle.
 // Fetched from your linked Supabase project via MCP (get_project_url).
-const DEFAULT_SUPABASE_URL = 'https://uqmwhmicwzpollunznks.supabase.co'
+const DEFAULT_SUPABASE_URL = 'https://hhgxmupzodiiqgqifmaz.supabase.co'
 
 // Only the anon/publishable key needs to be in .env — it's also public (designed for browsers).
 // MCP manages the database; env vars tell the React app how to reach it at runtime.

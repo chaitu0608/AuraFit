@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verifies AuraFit setup. Run: node scripts/check-setup.mjs
+ * Verifies AuraFit setup. Run: npm run check-setup
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
+const PROJECT_REF = 'hhgxmupzodiiqgqifmaz'
 
 function loadEnv() {
   const path = resolve(root, '.env')
@@ -23,12 +24,25 @@ function loadEnv() {
 
 const env = loadEnv()
 const anonKey = env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
-const url = env.VITE_SUPABASE_URL || 'https://uqmwhmicwzpollunznks.supabase.co'
+const url = env.VITE_SUPABASE_URL || `https://${PROJECT_REF}.supabase.co`
 const migrationPath = resolve(root, 'supabase/migrations/20250626000000_initial_schema.sql')
+const foodMigrationPath = resolve(root, 'supabase/migrations/20260626000000_food_logging.sql')
+const parseFoodFnPath = resolve(root, 'supabase/functions/parse-food/index.ts')
 
 console.log('\n=== AuraFit setup check ===\n')
 
 const checks = []
+
+// Never allow OpenAI key in client bundle
+const envText = existsSync(resolve(root, '.env')) ? readFileSync(resolve(root, '.env'), 'utf8') : ''
+const hasOpenAiInEnv = /^(VITE_)?OPENAI_API_KEY\s*=/m.test(envText)
+checks.push({
+  name: 'OPENAI_API_KEY not in .env (use Supabase Secrets)',
+  ok: !hasOpenAiInEnv,
+  action: hasOpenAiInEnv
+    ? 'Remove OPENAI_API_KEY from .env → Dashboard → Edge Functions → Secrets'
+    : undefined,
+})
 
 checks.push({
   name: '.env file',
@@ -39,7 +53,7 @@ checks.push({
 checks.push({
   name: 'VITE_SUPABASE_ANON_KEY',
   ok: Boolean(anonKey && anonKey !== 'your-anon-key'),
-  action: 'Dashboard → Settings → API → anon public (or Supabase MCP get_publishable_keys)',
+  action: 'Dashboard → Settings → API → anon public',
 })
 
 if (anonKey && anonKey !== 'your-anon-key') {
@@ -53,7 +67,7 @@ if (anonKey && anonKey !== 'your-anon-key') {
       action: res.status >= 500 ? 'Check project URL / key' : undefined,
     })
 
-    const { error } = await fetch(`${url}/rest/v1/profiles?select=id&limit=1`, {
+    const profilesCheck = await fetch(`${url}/rest/v1/profiles?select=id&limit=1`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
     }).then(async (r) => {
       if (r.status === 404 || r.status === 406) {
@@ -66,10 +80,41 @@ if (anonKey && anonKey !== 'your-anon-key') {
     })
 
     checks.push({
-      name: 'Database migration (profiles table)',
-      ok: !error,
-      action: error
-        ? 'Run supabase/migrations/20250626000000_initial_schema.sql (Dashboard SQL or MCP apply_migration)'
+      name: 'Database migration (profiles)',
+      ok: !profilesCheck.error,
+      action: profilesCheck.error
+        ? 'Run supabase/migrations/20250626000000_initial_schema.sql in SQL Editor'
+        : undefined,
+    })
+
+    const foodsCheck = await fetch(`${url}/rest/v1/foods?select=id&limit=1`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    }).then(async (r) => {
+      if (!r.ok) {
+        const body = await r.text()
+        if (body.includes('does not exist')) return { error: 'foods table missing' }
+        return { error: `HTTP ${r.status}` }
+      }
+      return { error: null }
+    })
+
+    checks.push({
+      name: 'Database migration (food logging)',
+      ok: !foodsCheck.error,
+      action: foodsCheck.error
+        ? 'Run supabase/migrations/20260626000000_food_logging.sql in SQL Editor'
+        : undefined,
+    })
+
+    // parse-food edge function health (OPTIONS or POST without auth → should not be 404)
+    const fnRes = await fetch(`${url}/functions/v1/parse-food`, {
+      method: 'OPTIONS',
+    })
+    checks.push({
+      name: 'parse-food edge function deployed',
+      ok: fnRes.status !== 404,
+      action: fnRes.status === 404
+        ? 'npm run deploy-edge-function (after setting OPENAI_API_KEY in Secrets)'
         : undefined,
     })
   } catch (e) {
@@ -82,9 +127,15 @@ if (anonKey && anonKey !== 'your-anon-key') {
 }
 
 checks.push({
-  name: 'Migration file in repo',
-  ok: existsSync(migrationPath),
+  name: 'Migration files in repo',
+  ok: existsSync(migrationPath) && existsSync(foodMigrationPath),
   action: 'Missing supabase/migrations/',
+})
+
+checks.push({
+  name: 'parse-food source in repo',
+  ok: existsSync(parseFoodFnPath),
+  action: 'Missing supabase/functions/parse-food/',
 })
 
 checks.push({
@@ -103,28 +154,24 @@ for (const c of checks) {
   }
 }
 
-console.log('\n--- What you need (summary) ---\n')
-console.log('  REQUIRED for cloud sync + friends:')
-console.log('    • VITE_SUPABASE_ANON_KEY  (one line in .env)')
-console.log('    • Database migration applied once')
+console.log('\n--- Auth OTP (one-time dashboard setup) ---\n')
+console.log('  Run: npm run supabase-auth-setup')
+console.log(`  Or:  https://supabase.com/dashboard/project/${PROJECT_REF}/auth/providers`)
+console.log('       Email ON, Confirm email OFF, template includes {{ .Token }}')
 console.log('')
-console.log('  REQUIRED for iPhone install:')
-console.log('    • Mac + Xcode + free Apple ID (no paid key needed)')
-console.log('')
-console.log('  REQUIRED for Sign in with Apple (on device):')
-console.log('    • Supabase Auth → Apple provider configured')
-console.log('    • Apple Developer → Services ID + key (free account works)')
-console.log('')
-console.log('  NOT required:')
-console.log('    • Service role key (never put in the app)')
-console.log('    • Vercel / any other MCP')
-console.log('    • HealthKit API keys (uses iOS permission prompt only)')
+
+console.log('--- Secrets (server-side only) ---\n')
+console.log(`  ${url.replace('.supabase.co', '')}.supabase.co → Functions → Secrets`)
+console.log('  OPENAI_API_KEY (required for food AI)')
+console.log('  USDA_API_KEY   (optional)')
 console.log('')
 
 if (allOk) {
-  console.log('All checks passed. Run: npm run dev  or  npm run ios:deploy\n')
+  console.log('All checks passed.')
+  console.log('  Web:  npm run dev')
+  console.log('  iOS:  npm run ios:deploy\n')
   process.exit(0)
 } else {
-  console.log('Fix the items above, then re-run: node scripts/check-setup.mjs\n')
+  console.log('Fix items above, then re-run: npm run check-setup\n')
   process.exit(1)
 }

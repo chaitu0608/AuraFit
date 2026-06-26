@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Flame } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flame, UtensilsCrossed } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
 import { SectionHeader, Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
@@ -13,6 +13,9 @@ import { colorFor } from '@/lib/summarise'
 import { computeWeekStats, computeStreak } from '@/lib/stats'
 import { APP_NAME } from '@/lib/brand'
 import { WeeklyActivityBar } from '@/features/home/WeeklyActivityBar'
+import { MacroRings } from '@/features/food/MacroRings'
+import { useFoodStore } from '@/stores/foodStore'
+import { mealsForDate, summariseDay } from '@/lib/food'
 import type { Session } from '@/lib/types'
 import { useEffect, useRef } from 'react'
 
@@ -22,12 +25,16 @@ export function CalendarPage() {
   const month = useUIStore((s) => s.month)
   const setMonth = useUIStore((s) => s.setMonth)
   const sessions = useDataStore((s) => s.sessions)
+  const mealsByDate = useFoodStore((s) => s.mealsByDate)
+  const nutritionGoals = useFoodStore((s) => s.goals)
   const heroRef = useFadeIn<HTMLDivElement>([])
   const calRef = useStaggerIn<HTMLDivElement>([month.getMonth(), month.getFullYear()])
   const streakRef = useRef<HTMLSpanElement>(null)
 
   const week = computeWeekStats(sessions)
   const streak = computeStreak(sessions)
+  const todayMeals = mealsForDate(mealsByDate, todayKey)
+  const todayMacros = summariseDay(todayMeals)
 
   useEffect(() => {
     if (streak > 0 && streakRef.current) animateStreakFire(streakRef.current)
@@ -96,6 +103,32 @@ export function CalendarPage() {
           )}
         </div>
       </div>
+
+      <Card className="!p-4 mb-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <div className="section-title">Today</div>
+            <p className="section-sub mt-0.5">Nutrition & training</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/food')}
+            className="pill bg-accent-dim text-accent border border-accent/25 gap-1.5 text-[12px] font-semibold"
+          >
+            <UtensilsCrossed size={14} />
+            Log food
+          </button>
+        </div>
+        <div className="flex justify-center">
+          <MacroRings
+            eaten={todayMacros}
+            goals={nutritionGoals}
+            volumeKg={week.volumeKg}
+            volumeGoal={5000}
+            compact
+          />
+        </div>
+      </Card>
 
       <div className="grid grid-cols-3 gap-2 mb-5" data-stagger>
         <StatCard label="This week" value={week.sessions} unit="sessions" tone="accent" />

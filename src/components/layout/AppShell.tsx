@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Dumbbell, Users2, User, ChevronLeft, Plus } from 'lucide-react'
+import { Home, Dumbbell, UtensilsCrossed, Users2, User, ChevronLeft, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/uiStore'
 import { key } from '@/lib/utils'
@@ -8,6 +8,7 @@ import { key } from '@/lib/utils'
 const tabs = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/workouts', icon: Dumbbell, label: 'Train' },
+  { to: '/food', icon: UtensilsCrossed, label: 'Food' },
   { to: '/feed', icon: Users2, label: 'Social' },
   { to: '/profile', icon: User, label: 'You' },
 ] as const
@@ -104,7 +105,7 @@ export function AppShell({
                 end={to === '/'}
                 className={({ isActive }) =>
                   cn(
-                    'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold tracking-wide transition-colors',
+                    'flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-semibold tracking-wide transition-colors min-w-0',
                     isActive ? 'text-accent' : 'text-faint',
                   )
                 }
@@ -113,11 +114,11 @@ export function AppShell({
                   <>
                     <div
                       className={cn(
-                        'p-1.5 rounded-rs transition-colors',
+                        'p-1 rounded-rs transition-colors',
                         isActive && 'bg-accent-dim',
                       )}
                     >
-                      <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />
+                      <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                     </div>
                     {label}
                   </>

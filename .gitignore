@@ -31,3 +31,11 @@ ios/DerivedData
 
 # TypeScript
 *.tsbuildinfo
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/
+
+# Secrets — never commit (keep .env.example)
+.env.*
+!.env.example

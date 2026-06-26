@@ -5,16 +5,43 @@
 ## Stack
 
 - **Frontend**: Vite + React + TypeScript + Tailwind + anime.js
-- **Native**: Capacitor 6 (iOS) with HealthKit + Sign in with Apple
+- **Native**: Capacitor 6 (iOS); email OTP login on free Personal Team (Apple Sign In / HealthKit need $99/yr program)
 - **Backend**: Supabase (Postgres, Auth, Realtime)
 
 ## Quick start (web dev)
 
 ```bash
 npm install
-cp .env.example .env   # paste anon key only (URL is already in the app)
+cp .env.example .env   # paste anon key only
+npm run supabase-auth-setup   # one-time: configure email OTP in dashboard
+npm run check-setup
 npm run dev
 ```
+
+**Login:** email + 6-digit code (not magic link). On iPhone (free Apple ID) use the same email OTP flow.
+
+## Auth setup (one-time)
+
+```bash
+npm run supabase-auth-setup
+```
+
+In Supabase Dashboard:
+1. **Auth → Providers → Email** — ON, **Confirm email** OFF
+2. **Auth → Email Templates → Magic Link** — body must include `{{ .Token }}`
+
+## AI food logging setup
+
+1. Add `OPENAI_API_KEY` in [Edge Function Secrets](https://supabase.com/dashboard/project/hhgxmupzodiiqgqifmaz/functions/secrets) (never in `.env`)
+2. Deploy the parser:
+
+```bash
+npx supabase login
+npx supabase link --project-ref hhgxmupzodiiqgqifmaz
+npm run deploy-edge-function
+```
+
+3. In app **Food** tab: type `i ate a bowl of dal` → Parse & log → Confirm
 
 ## Deploy to your iPhone (free Apple ID)
 
@@ -34,7 +61,7 @@ npm run dev
    # VITE_SUPABASE_ANON_KEY from Supabase Dashboard → Settings → API
    ```
 
-   Project URL is already set: `https://uqmwhmicwzpollunznks.supabase.co`
+   Project URL is already set: `https://hhgxmupzodiiqgqifmaz.supabase.co`
 
    **MCP vs .env:** Supabase MCP (in Cursor) is for *you* — migrations, SQL, debugging. The React app on your phone runs separately and needs the public anon key to call Supabase. That key is not secret; `.env` just keeps it out of git.
 
@@ -42,22 +69,27 @@ npm run dev
 
    Ask Cursor to run Supabase MCP `apply_migration` using `supabase/migrations/20250626000000_initial_schema.sql`, or paste that file into Dashboard → SQL Editor.
 
-3. **Configure Apple Sign In** (Supabase Dashboard → Auth → Providers → Apple)
+3. **Configure email OTP** — `npm run supabase-auth-setup` (Apple Sign In optional with paid developer account)
 
 4. **Build and open Xcode**
 
    ```bash
    npm install
+   npm run ios:ship-check   # preflight (USB iPhone, .env, CocoaPods)
    npm run ios:deploy
    ```
+
+   If build fails with "iOS platform is not installed": Xcode → Settings → Components → install iOS support.
 
 5. **In Xcode**
    - Select your iPhone as the run target
    - Signing & Capabilities → Team → your Apple ID
-   - Enable **HealthKit** and **Sign in with Apple** capabilities if prompted
+   - Do **not** add HealthKit or Sign in with Apple on free Personal Team
    - Press **Run** (▶)
 
-6. **Re-sign every 7 days** (free provisioning limit)
+6. **Trust developer on iPhone** — Settings → General → VPN & Device Management
+
+7. **Re-sign every 7 days** (free provisioning limit)
 
    Re-run `npm run ios:deploy` and hit Run in Xcode.
 
@@ -76,11 +108,11 @@ Your friend repeats the same steps on their Mac + iPhone:
 
 | Tab | What it does |
 |-----|-------------|
-| Calendar | Monthly view, color-coded workout days |
-| Workouts | Reusable templates |
-| Feed | Friend activity, reactions, comments |
-| Friends | Add by handle, accept requests, PR compare |
-| Settings | Exercise manager, export, programs |
+| Home | Calendar, macro rings, weekly stats |
+| Train | Log workouts, sets/reps, templates |
+| Food | AI food logging (`i ate a bowl of dal` → macros) |
+| Social | Friend activity feed |
+| You | Profile, settings |
 
 - **HealthKit**: imports Apple Watch workouts, writes strength sessions to Fitness
 - **Offline-first**: local Zustand cache + sync queue to Supabase
@@ -108,6 +140,11 @@ ios/                   # Capacitor iOS project (generated)
 | `npm run build` | Production build |
 | `npm run ios:sync` | Build + sync to iOS |
 | `npm run ios:deploy` | Build + sync + open Xcode |
+| `npm run ios:ship-check` | Preflight before installing on iPhone |
+| `npm run apple-signin-setup` | Print Apple Sign In + Supabase config steps |
+| `npm run check-setup` | Verify Supabase, migrations, edge function |
+| `npm run supabase-auth-setup` | Print email OTP dashboard steps |
+| `npm run verify-e2e` | OTP login + parse-food probe (`send` / `verify` / `parse`) |
 
 ## Legacy app
 
